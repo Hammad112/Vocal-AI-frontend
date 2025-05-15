@@ -49,10 +49,10 @@ MODEL_NAME = "llama-3.3-70b-versatile"
 WHISPER_MODEL = "whisper-large-v3-turbo"
 
 # Configuration
-GROQ_API_KEY = "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"
+GROQ_API_KEY = ""
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
-FREESOUND_API_KEY = "fnqHINIbylLi4oLJcf3SD8ZEtTMS7ViA0xU7ROxB"
+FREESOUND_API_KEY = ""
 FREESOUND_SEARCH_URL = "https://freesound.org/apiv2/search/text/"
 
 client = Groq(api_key=GROQ_API_KEY)
