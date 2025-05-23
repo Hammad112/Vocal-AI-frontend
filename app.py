@@ -43,9 +43,9 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Constants and Configuration
 MODEL_NAME = "llama-3.3-70b-versatile"
 WHISPER_MODEL = "whisper-large-v3-turbo"
-GROQ_API_KEY = "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"
+GROQ_API_KEY = ""
 WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
-FREESOUND_API_KEY = "fnqHINIbylLi4oLJcf3SD8ZEtTMS7ViA0xU7ROxB"
+FREESOUND_API_KEY = ""
 FREESOUND_SEARCH_URL = "https://freesound.org/apiv2/search/text/"
 VOICES = {
     "en": {"male": "en-US-GuyNeural", "female": "en-US-JennyNeural"},
