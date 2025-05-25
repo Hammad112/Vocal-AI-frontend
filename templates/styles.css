@@ -335,7 +335,128 @@
     background-color: #ffd700;
   }
   
- 
+
+  
+  /* ==========================================================================
+     Text to Speech Specific Styles
+     ========================================================================== */
+     .voice-selection {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      padding: 15px;
+      opacity: 0;
+      visibility: hidden; /* Prevent initial rendering */
+      transform: scale(0.9);
+      will-change: opacity, transform, visibility;
+    }
+    
+    .voice-selection.animate {
+      animation: expandSmooth 2.4s cubic-bezier(0.23, 1, 0.32, 1) forwards 0.9s;
+    }
+    
+    .voice-btn {
+      flex: 1;
+      background: #2c2c2c;
+      color: #ffffff;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: background-color 0.4s ease, transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+      opacity: 0;
+      visibility: hidden; /* Prevent initial rendering */
+      transform: scale(0.85) translateY(30px);
+      will-change: transform, opacity, visibility, box-shadow;
+    }
+    
+    .voice-btn.animate {
+      animation: bounceElegant 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+    
+    .voice-btn:nth-child(1).animate { animation-delay: 1.1s; }
+    .voice-btn:nth-child(2).animate { animation-delay: 1.3s; }
+    
+    .voice-btn.active {
+      background-color: #e6b800;
+      color: #000000;
+      transform: scale(1.06);
+    }
+    
+    .voice-btn:hover {
+      background: #4f6814;
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .tts-controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      opacity: 0;
+      visibility: hidden; /* Prevent initial rendering */
+      transform: scale(0.9);
+      will-change: opacity, transform, visibility;
+    }
+    
+    .tts-controls.animate {
+      animation: expandSmooth 2.4s cubic-bezier(0.23, 1, 0.32, 1) forwards 1.5s;
+    }
+    
+    .tts-controls button {
+      background-color: #e6b800;
+      flex: 1;
+      opacity: 0;
+      visibility: hidden; /* Prevent initial rendering */
+      transform: scale(0.85) translateY(30px);
+      will-change: transform, opacity, visibility, box-shadow;
+    }
+    
+    .tts-controls button.animate {
+      animation: bounceElegant 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    }
+    
+    .tts-controls button:nth-child(1).animate { animation-delay: 1.7s; }
+    .tts-controls button:nth-child(2).animate { animation-delay: 1.9s; }
+    
+    .tts-controls button:disabled {
+      background: #555555;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .status-message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      font-size: 1rem;
+      opacity: 0;
+      visibility: hidden; /* Prevent initial rendering */
+      transform: translateY(15px);
+      will-change: opacity, transform, visibility;
+    }
+    
+    .status-message.animate {
+      animation: fadeAndRise 2.6s cubic-bezier(0.23, 1, 0.32, 1) forwards 2.1s;
+    }
+    
+    .status-message.processing {
+      background: #2c2c2c;
+      color: #ffcc00;
+    }
+    
+    .status-message.success {
+      background: #1e3a1e;
+      color: #4caf50;
+    }
+    
+    .status-message.error {
+      background: #3a1e1e;
+      color: #f44336;
+    }
+    
+    .pulse {
+      animation: pulseGlow 2s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
+    }
   /* ==========================================================================
      Voice Changer Section Styles
      ========================================================================== */
@@ -1592,126 +1713,7 @@
     filter: drop-shadow(0 0 6px rgba(255, 204, 0, 0.4));
   }
   
-  /* ==========================================================================
-     Text to Speech Specific Styles
-     ========================================================================== */
-  .voice-selection {
-    display: flex;
-    gap: 20px;
-    margin-bottom: 20px;
-    padding: 15px;
-    opacity: 0;
-    visibility: hidden; /* Prevent initial rendering */
-    transform: scale(0.9);
-    will-change: opacity, transform, visibility;
-  }
-  
-  .voice-selection.animate {
-    animation: expandSmooth 2.4s cubic-bezier(0.23, 1, 0.32, 1) forwards 0.9s;
-  }
-  
-  .voice-btn {
-    flex: 1;
-    background: #2c2c2c;
-    color: #ffffff;
-    padding: 12px;
-    border-radius: 8px;
-    font-size: 1rem;
-    transition: background-color 0.4s ease, transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
-    opacity: 0;
-    visibility: hidden; /* Prevent initial rendering */
-    transform: scale(0.85) translateY(30px);
-    will-change: transform, opacity, visibility, box-shadow;
-  }
-  
-  .voice-btn.animate {
-    animation: bounceElegant 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  }
-  
-  .voice-btn:nth-child(1).animate { animation-delay: 1.1s; }
-  .voice-btn:nth-child(2).animate { animation-delay: 1.3s; }
-  
-  .voice-btn.active {
-    background-color: #e6b800;
-    color: #000000;
-    transform: scale(1.06);
-  }
-  
-  .voice-btn:hover {
-    background: #4f6814;
-    transform: translateY(-4px) scale(1.03);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-  }
-  
-  .tts-controls {
-    display: flex;
-    gap: 15px;
-    margin-bottom: 20px;
-    opacity: 0;
-    visibility: hidden; /* Prevent initial rendering */
-    transform: scale(0.9);
-    will-change: opacity, transform, visibility;
-  }
-  
-  .tts-controls.animate {
-    animation: expandSmooth 2.4s cubic-bezier(0.23, 1, 0.32, 1) forwards 1.5s;
-  }
-  
-  .tts-controls button {
-    background-color: #e6b800;
-    flex: 1;
-    opacity: 0;
-    visibility: hidden; /* Prevent initial rendering */
-    transform: scale(0.85) translateY(30px);
-    will-change: transform, opacity, visibility, box-shadow;
-  }
-  
-  .tts-controls button.animate {
-    animation: bounceElegant 1.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-  }
-  
-  .tts-controls button:nth-child(1).animate { animation-delay: 1.7s; }
-  .tts-controls button:nth-child(2).animate { animation-delay: 1.9s; }
-  
-  .tts-controls button:disabled {
-    background: #555555;
-    cursor: not-allowed;
-    transform: none;
-  }
-  
-  .status-message {
-    margin-top: 15px;
-    padding: 10px;
-    border-radius: 8px;
-    font-size: 1rem;
-    opacity: 0;
-    visibility: hidden; /* Prevent initial rendering */
-    transform: translateY(15px);
-    will-change: opacity, transform, visibility;
-  }
-  
-  .status-message.animate {
-    animation: fadeAndRise 2.6s cubic-bezier(0.23, 1, 0.32, 1) forwards 2.1s;
-  }
-  
-  .status-message.processing {
-    background: #2c2c2c;
-    color: #ffcc00;
-  }
-  
-  .status-message.success {
-    background: #1e3a1e;
-    color: #4caf50;
-  }
-  
-  .status-message.error {
-    background: #3a1e1e;
-    color: #f44336;
-  }
-  
-  .pulse {
-    animation: pulseGlow 2s cubic-bezier(0.23, 1, 0.32, 1) infinite alternate;
-  }
+ 
   
   /* ==========================================================================
      Best Animations

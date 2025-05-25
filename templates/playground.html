@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -63,13 +64,15 @@
       <div class="card">
         <div class="card-header">
           <h1 class="card-title">🎙️ MELO AI Voice Cloner</h1>
-          <p class="card-subtitle">Transform your voice into a digital masterpiece — Clone it with cutting-edge AI models</p>
+          <p class="card-subtitle">Transform your voice into a digital masterpiece — Clone it with cutting-edge AI
+            models</p>
         </div>
 
         <form id="voiceForm" class="form">
           <div id="textInputContainer">
             <label for="userText" class="input-label">✍️ Enter Text or Question</label>
-            <textarea id="userText" class="textarea" placeholder="Write something here that you want to hear in your cloned voice..."></textarea>
+            <textarea id="userText" class="textarea"
+              placeholder="Write something here that you want to hear in your cloned voice..."></textarea>
           </div>
 
           <div id="recordContainer" class="hidden">
@@ -104,280 +107,285 @@
 
   <script>
     // DOM Elements
-const modeSelect = document.getElementById("modeSelect");
-const textInputContainer = document.getElementById("textInputContainer");
-const recordContainer = document.getElementById("recordContainer");
-const recordBtn = document.getElementById("recordBtn");
-const recordBtnText = document.getElementById("recordBtnText");
-const recordStatus = document.getElementById("recordStatus");
-const voiceForm = document.getElementById("voiceForm");
-const spinner = document.getElementById("spinner");
-const output = document.getElementById("output");
-const downloadBtn = document.getElementById("downloadBtn");
-const audioPlayer = document.getElementById("audioPlayer");
-const visualizer = document.getElementById("visualizer");
-const audioVisualizer = document.getElementById("audioVisualizer");
+    const modeSelect = document.getElementById("modeSelect");
+    const textInputContainer = document.getElementById("textInputContainer");
+    const recordContainer = document.getElementById("recordContainer");
+    const recordBtn = document.getElementById("recordBtn");
+    const recordBtnText = document.getElementById("recordBtnText");
+    const recordStatus = document.getElementById("recordStatus");
+    const voiceForm = document.getElementById("voiceForm");
+    const spinner = document.getElementById("spinner");
+    const output = document.getElementById("output");
+    const downloadBtn = document.getElementById("downloadBtn");
+    const audioPlayer = document.getElementById("audioPlayer");
+    const visualizer = document.getElementById("visualizer");
+    const audioVisualizer = document.getElementById("audioVisualizer");
 
-// Variables
-let recordedBlob = null;
-let mediaRecorder = null;
-let audioContext = null;
-let analyser = null;
-let isRecording = false;
-let animationFrame = null;
-let stream = null;
+    // Variables
+    let recordedBlob = null;
+    let mediaRecorder = null;
+    let audioContext = null;
+    let analyser = null;
+    let isRecording = false;
+    let animationFrame = null;
+    let stream = null;
 
-// Mode selection handler
-modeSelect.addEventListener("change", () => {
-  const selected = modeSelect.value;
-  // Toggle visibility based on mode
-  textInputContainer.classList.toggle("hidden", selected === "clone-my-audio" || selected === "llmAudio");
-  recordContainer.classList.toggle("hidden", selected !== "clone-my-audio" && selected !== "llmAudio");
-});
-
-// Initialize audio visualizer
-function initAudioVisualizer(stream) {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  }
-
-  const source = audioContext.createMediaStreamSource(stream);
-  analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256;
-  source.connect(analyser);
-
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-
-  const ctx = visualizer.getContext('2d');
-
-  function draw() {
-    if (!isRecording) return;
-
-    animationFrame = requestAnimationFrame(draw);
-    analyser.getByteFrequencyData(dataArray);
-
-    ctx.clearRect(0, 0, visualizer.width, visualizer.height);
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-    ctx.fillRect(0, 0, visualizer.width, visualizer.height);
-
-    const barWidth = (visualizer.width / bufferLength) * 2.5;
-    let x = 0;
-
-    for (let i = 0; i < bufferLength; i++) {
-      const barHeight = dataArray[i] / 2;
-      ctx.fillStyle = `rgb(${245}, ${197 + i}, ${24 + i})`;
-      ctx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
-      x += barWidth + 1;
-    }
-  }
-
-  draw();
-}
-
-// Record audio function
-async function toggleRecording() {
-  if (isRecording) {
-    // Stop recording
-    isRecording = false;
-    recordBtnText.textContent = "Start Recording";
-    recordBtn.classList.remove("recording");
-    recordStatus.textContent = "✅ Recording complete.";
-
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
-
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
-    }
-
-    if (animationFrame) {
-      cancelAnimationFrame(animationFrame);
-    }
-
-    audioVisualizer.classList.add("hidden");
-  } else {
-    // Start recording
-    try {
-      recordStatus.textContent = "🎙️ Recording... speak now.";
-      recordBtnText.textContent = "Stop Recording";
-      recordBtn.classList.add("recording");
-
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      let chunks = [];
-
-      mediaRecorder = new MediaRecorder(stream);
-
-      mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-      mediaRecorder.onstop = () => {
-        recordedBlob = new Blob(chunks, { type: "audio/wav" });
-        const audioUrl = URL.createObjectURL(recordedBlob);
-
-        // Preview the recorded audio
-        audioPlayer.src = audioUrl;
-        audioPlayer.style.display = "block";
-        output.classList.remove("hidden");
-        downloadBtn.style.display = "none"; // Hide download button for preview
-      };
-
-      mediaRecorder.start();
-      isRecording = true;
-
-      // Initialize and show audio visualizer
-      audioVisualizer.classList.remove("hidden");
-      initAudioVisualizer(stream);
-
-      // Auto-stop after 10 seconds
-      setTimeout(() => {
-        if (isRecording) {
-          toggleRecording();
-        }
-      }, 10000);
-
-    } catch (err) {
-      recordStatus.textContent = "❌ Error accessing microphone.";
-      console.error(err);
-    }
-  }
-}
-
-// Add event listener to record button
-recordBtn.addEventListener("click", toggleRecording);
-
-// Form submission handler
-voiceForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const formData = new FormData();
-  const language = document.getElementById("language").value;
-  const mode = modeSelect.value;
-  const refAudio = document.getElementById("refAudio").files[0];
-  const userText = document.getElementById("userText").value;
-
-  // Hide output and show spinner
-  output.classList.add("hidden");
-  spinner.classList.remove("hidden");
-  downloadBtn.style.display = "none";
-  audioPlayer.src = "";
-
-  // Validate inputs
-  if (!refAudio && (mode === "clone-my-audio" || mode === "llmAudio")) {
-    showNotification("Reference audio is required.", "error");
-    spinner.classList.add("hidden");
-    return;
-  }
-
-  formData.append("language", language);
-  formData.append("refAudio", refAudio);
-
-  let url = "";
-
-  if (mode === "clone-my-audio" || mode === "llmAudio") {
-    // Validate recorded audio for clone-my-audio and llmAudio modes
-    if (!recordedBlob) {
-      showNotification("Please record your question first.", "error");
-      spinner.classList.add("hidden");
-      return;
-    }
-    formData.append("audioFileInput", new File([recordedBlob], "input.wav"));
-
-    // Set correct URL endpoint for audio cloning modes
-    url = mode === "llmAudio" 
-      ? "http://localhost:8000/clone-llm-audio/"
-      : "http://localhost:8000/clone-my-audio/";
-  } else if (mode === "llmText" || mode === "text") {
-    // Validate text input for text-based modes
-    if (!userText.trim()) {
-      showNotification("Please enter some text.", "error");
-      spinner.classList.add("hidden");
-      return;
-    }
-    formData.append("userText", userText);
-
-    // Set correct URL endpoint for text modes
-    url = mode === "llmText" 
-      ? "http://localhost:8000/clone-llm-text/" 
-      : "http://localhost:8000/clone-text/";
-  }
-
-  try {
-    const res = await fetch(url, {
-      method: "POST",
-      body: formData
+    // Mode selection handler
+    modeSelect.addEventListener("change", () => {
+      const selected = modeSelect.value;
+      // Toggle visibility based on mode
+      textInputContainer.classList.toggle("hidden", selected === "clone-my-audio" || selected === "llmAudio");
+      recordContainer.classList.toggle("hidden", selected !== "clone-my-audio" && selected !== "llmAudio");
     });
 
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error("Voice generation failed: " + errorText);
+    // Initialize audio visualizer
+    function initAudioVisualizer(stream) {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      const source = audioContext.createMediaStreamSource(stream);
+      analyser = audioContext.createAnalyser();
+      analyser.fftSize = 256;
+      source.connect(analyser);
+
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const ctx = visualizer.getContext('2d');
+
+      function draw() {
+        if (!isRecording) return;
+
+        animationFrame = requestAnimationFrame(draw);
+        analyser.getByteFrequencyData(dataArray);
+
+        ctx.clearRect(0, 0, visualizer.width, visualizer.height);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0, 0, visualizer.width, visualizer.height);
+
+        const barWidth = (visualizer.width / bufferLength) * 2.5;
+        let x = 0;
+
+        for (let i = 0; i < bufferLength; i++) {
+          const barHeight = dataArray[i] / 2;
+          ctx.fillStyle = `rgb(${245}, ${197 + i}, ${24 + i})`;
+          ctx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
+          x += barWidth + 1;
+        }
+      }
+
+      draw();
     }
 
-    // Create a URL for the returned audio blob
-    const blob = await res.blob();
-    const audioUrl = URL.createObjectURL(blob);
+    // Record audio function
+    async function toggleRecording() {
+      if (isRecording) {
+        // Stop recording
+        isRecording = false;
+        recordBtnText.textContent = "Start Recording";
+        recordBtn.classList.remove("recording");
+        recordStatus.textContent = "✅ Recording complete.";
 
-    console.log(audioUrl);  // Debug: Log the audio URL
+        if (mediaRecorder) {
+          mediaRecorder.stop();
+        }
 
-    // Set the audio player source
-    audioPlayer.src = audioUrl;
-    audioPlayer.style.display = "block";  // Make audio player visible
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+        }
 
-    // Ensure the download button is shown
-    downloadBtn.href = audioUrl;  // Set the href of the download button
-    downloadBtn.style.display = "inline-block";  // Make the download button visible
-    console.log(downloadBtn);  // Debug: Log the download button element
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+        }
 
-    // Ensure the output section is visible
-    output.classList.remove("hidden");
-    console.log(output);  // Debug: Log the output element
-    
-    // Display success notification
-    showNotification("Voice cloned successfully!", "success");
-  } catch (error) {
-    console.error("❌ Error generating voice:", error);
-    showNotification("An error occurred while generating the voice.", "error");
-  } finally {
-    spinner.classList.add("hidden");  // Hide the spinner when done
-  }
+        audioVisualizer.classList.add("hidden");
+      } else {
+        // Start recording
+        try {
+          recordStatus.textContent = "🎙️ Recording... speak now.";
+          recordBtnText.textContent = "Stop Recording";
+          recordBtn.classList.add("recording");
 
-});
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          let chunks = [];
+
+          mediaRecorder = new MediaRecorder(stream);
+
+          mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+          mediaRecorder.onstop = () => {
+            recordedBlob = new Blob(chunks, { type: "audio/wav" });
+            const audioUrl = URL.createObjectURL(recordedBlob);
+
+            // Preview the recorded audio
+            audioPlayer.src = audioUrl;
+            audioPlayer.style.display = "block";
+            output.classList.remove("hidden");
+            downloadBtn.style.display = "none"; // Hide download button for preview
+          };
+
+          mediaRecorder.start();
+          isRecording = true;
+
+          // Initialize and show audio visualizer
+          audioVisualizer.classList.remove("hidden");
+          initAudioVisualizer(stream);
+
+          // Auto-stop after 10 seconds
+          setTimeout(() => {
+            if (isRecording) {
+              toggleRecording();
+            }
+          }, 10000);
+
+        } catch (err) {
+          recordStatus.textContent = "❌ Error accessing microphone.";
+          console.error(err);
+        }
+      }
+    }
+
+    // Add event listener to record button
+    recordBtn.addEventListener("click", toggleRecording);
+
+    // Form submission handler
+    voiceForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData();
+      const language = document.getElementById("language").value;
+      const mode = modeSelect.value;
+      const refAudio = document.getElementById("refAudio").files[0];
+      const userText = document.getElementById("userText").value;
+
+      // Hide output and show spinner
+      output.classList.add("hidden");
+      spinner.classList.remove("hidden");
+      downloadBtn.style.display = "none";
+      audioPlayer.src = "";
+
+      // Validate inputs
+      if (!refAudio && (mode === "clone-my-audio" || mode === "llmAudio")) {
+        showNotification("Reference audio is required.", "error");
+        spinner.classList.add("hidden");
+        return;
+      }
+
+      formData.append("language", language);
+      formData.append("refAudio", refAudio);
+
+      let url = "";
+
+      if (mode === "clone-my-audio" || mode === "llmAudio") {
+        // Validate recorded audio for clone-my-audio and llmAudio modes
+        if (!recordedBlob) {
+          showNotification("Please record your question first.", "error");
+          spinner.classList.add("hidden");
+          return;
+        }
+        formData.append("audioFileInput", new File([recordedBlob], "input.wav"));
+
+        // Set correct URL endpoint for audio cloning modes
+        url = mode === "llmAudio"
+          ? "http://localhost:8000/clone-llm-audio/"
+          : "http://localhost:8000/clone-my-audio/";
+      } else if (mode === "llmText" || mode === "text") {
+        // Validate text input for text-based modes
+        if (!userText.trim()) {
+          showNotification("Please enter some text.", "error");
+          spinner.classList.add("hidden");
+          return;
+        }
+        formData.append("userText", userText);
+
+        // Set correct URL endpoint for text modes
+        url = mode === "llmText"
+          ? "http://localhost:8000/clone-llm-text/"
+          : "http://localhost:8000/clone-text/";
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          body: formData
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error("Voice generation failed: " + errorText);
+        }
+
+        // Create a URL for the returned audio blob
+        const blob = await res.blob();
+        const audioUrl = URL.createObjectURL(blob);
+
+        console.log(audioUrl);  // Debug: Log the audio URL
+
+        // Set the audio player source
+        audioPlayer.src = audioUrl;
+        audioPlayer.style.display = "block";  // Make audio player visible
+
+        // Ensure the download button is shown
+        downloadBtn.href = audioUrl;  // Set the href of the download button
+        downloadBtn.style.display = "inline-block";  // Make the download button visible
+        console.log(downloadBtn);  // Debug: Log the download button element
+
+        // Ensure the output section is visible
+        output.classList.remove("hidden");
+        console.log(output);  // Debug: Log the output element
+
+        // Display success notification
+        showNotification("Voice cloned successfully!", "success");
+      } catch (error) {
+        console.error("❌ Error generating voice:", error);
+        showNotification("An error occurred while generating the voice.", "error");
+      } finally {
+        spinner.classList.add("hidden");  // Hide the spinner when done
+      }
+
+    });
 
 
-// Notification function
-function showNotification(message, type = "info") {
-  // Create notification element
-  const notification = document.createElement("div");
-  notification.textContent = message;
-  notification.className = `notification ${type}`;
+    // Notification function
+    function showNotification(message, type = "info") {
+      // Create notification element
+      const notification = document.createElement("div");
+      notification.textContent = message;
+      notification.className = `notification ${type}`;
 
-  // Add icon based on type
-  const icon = document.createElement("span");
-  if (type === "error") {
-    icon.textContent = "❌";
-  } else if (type === "success") {
-    icon.textContent = "✅";
-  } else {
-    icon.textContent = "ℹ️";
-  }
+      // Add icon based on type
+      const icon = document.createElement("span");
+      if (type === "error") {
+        icon.textContent = "❌";
+      } else if (type === "success") {
+        icon.textContent = "✅";
+      } else {
+        icon.textContent = "ℹ️";
+      }
 
-  notification.prepend(icon);
+      notification.prepend(icon);
 
-  // Add to DOM
-  document.body.appendChild(notification);
+      // Add to DOM
+      document.body.appendChild(notification);
 
-  // Remove after 4 seconds
-  setTimeout(() => {
-    notification.style.opacity = "0";
-    notification.style.transform = "translateY(10px)";
-    notification.style.transition = "all 0.3s ease";
+      // Remove after 4 seconds
+      setTimeout(() => {
+        notification.style.opacity = "0";
+        notification.style.transform = "translateY(10px)";
+        notification.style.transition = "all 0.3s ease";
 
-    setTimeout(() => {
-      document.body.removeChild(notification);
-    }, 300);
-  }, 4000);
-}
+        setTimeout(() => {
+          document.body.removeChild(notification);
+        }, 300);
+      }, 4000);
+    }
+    console.log("Audio URL:", audioUrl);
+    console.log("Audio Player display:", audioPlayer.style.display);
+    console.log("Output display:", output.style.display);
+    console.log("Download button display:", downloadBtn.style.display);
 
 
   </script>
 </body>
+
 </html>
