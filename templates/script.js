@@ -7,7 +7,8 @@ document.addEventListener('DOMContentLoaded', () => {
         stt: { transcription: '', status: '' },
         activeSection: 'text-to-speech', // Default to text-to-speech
         menuOpen: false,
-        exploreAnimated: false
+        exploreAnimated: false,
+        
     };
 
     // Load state from localStorage
@@ -17,10 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const parsedState = JSON.parse(savedState);
             // Only load state for properties we want to persist
             appState.tts = parsedState.tts || { text: '', gender: 'male', audioUrl: '', status: '' };
-            appState.sfx = parsedState.sfx || false;
+            appState.sfx = parsedState.sfx || true;
             appState.activeSection = parsedState.activeSection || 'text-to-speech';
             appState.menuOpen = parsedState.menuOpen || false;
             appState.exploreAnimated = parsedState.exploreAnimated || false;
+            appState.voiceChanger = parsedState.voiceChanger || {
+                inputText: '',
+                selectedEffect: 'robot',
+                audioUrl: '',
+                status: ''
+            };
         }
         restoreUI();
     };
@@ -30,10 +37,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveState = () => {
         const stateToSave = {
             tts: appState.tts,
-            // sfx: appState.sfx,
+            sfx: appState.sfx,
             activeSection: appState.activeSection,
             menuOpen: appState.menuOpen,
-            exploreAnimated: appState.exploreAnimated
+            exploreAnimated: appState.exploreAnimated,
+            voiceChanger: appState.voiceChanger
         };
         localStorage.setItem('appState', JSON.stringify(stateToSave));
     };
@@ -109,18 +117,54 @@ document.addEventListener('DOMContentLoaded', () => {
             updateStatus('tts-status', appState.tts.status, appState.tts.status.includes('Error') ? 'error' : 'success');
         }
 
-        // if (appState.sfx.query) {
-        //     document.getElementById('sfx-input').value = appState.sfx.query;
-        //     if (appState.sfx.audioUrl) {
-        //         const audio = document.getElementById('sfx-audio');
-        //         audio.src = appState.sfx.audioUrl;
-        //         audio.classList.remove('hidden');
-        //         updateStatus('sfx-status', appState.sfx.status, appState.sfx.status.includes('Error') ? 'error' : 'success');
-        //     }
-        //     if (appState.sfx.taskId && appState.sfx.status === 'processing') {
-        //         pollForAudio(appState.sfx.taskId);
-        //     }
-        // }
+        if (appState.sfx.query) {
+            document.getElementById('sfx-input').value = appState.sfx.query;
+            if (appState.sfx.audioUrl) {
+                const audio = document.getElementById('sfx-audio');
+                audio.src = appState.sfx.audioUrl;
+                audio.classList.remove('hidden');
+                updateStatus('sfx-status', appState.sfx.status, appState.sfx.status.includes('Error') ? 'error' : 'success');
+            }
+            if (appState.sfx.taskId && appState.sfx.status === 'processing') {
+                pollForAudio(appState.sfx.taskId);
+            }
+        }
+
+         // Restore voiceChanger input text
+        if (appState.voiceChanger.inputText) {
+            const vcInput = document.getElementById('voice-changer-input');
+            if (vcInput) vcInput.value = appState.voiceChanger.inputText;
+        }
+
+        // Restore selected effect button for voiceChanger
+        if (appState.voiceChanger.selectedEffect) {
+            document.querySelectorAll('.voice-changer-effect-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.effect === appState.voiceChanger.selectedEffect) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Restore audio if available
+        if (appState.voiceChanger.audioUrl) {
+            const vcAudio = document.getElementById('voice-changer-audio');
+            if (vcAudio) {
+                vcAudio.src = appState.voiceChanger.audioUrl;
+                vcAudio.style.display = 'block';
+            }
+            const vcDownloadBtn = document.getElementById('voice-changer-download');
+            if (vcDownloadBtn) vcDownloadBtn.disabled = false;
+            const vcPlayBtn = document.getElementById('voice-changer-play');
+            if (vcPlayBtn) vcPlayBtn.disabled = false;
+        }
+
+        // Update status if any
+        if (appState.voiceChanger.status) {
+            updateStatus('voice-changer-status', appState.voiceChanger.status, appState.voiceChanger.status.includes('Error') ? 'error' : 'success');
+        }
+
+
 
         // No restoration for voiceChanger and stt since we're not saving their state
     };

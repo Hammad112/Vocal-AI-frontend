@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Form, BackgroundTasks
+from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -13,22 +13,17 @@ import wave
 from langdetect import detect
 import edge_tts
 from pydub import AudioSegment
+import librosa
 import soundfile as sf
 import noisereduce as nr
 from scipy.signal import lfilter
 import aiohttp
 import re
 from datetime import datetime
+from TTS.api import TTS
 import uuid
 import uvicorn
 from groq import Groq
-import logging
-import subprocess
-import librosa  # Added missing import
-from TTS.api import TTS
-import torch
-from TTS.tts.models.xtts import XttsArgs
-import warnings
 
 
 app = FastAPI()
@@ -36,132 +31,35 @@ app = FastAPI()
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Adjust for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# # TTS Setup
+tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=False)
 
-# Constants and Configuration
+# Mount static directory for audio downloads
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+# Constants
 MODEL_NAME = "llama-3.3-70b-versatile"
 WHISPER_MODEL = "whisper-large-v3-turbo"
-WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
 
+# Configuration
+GROQ_API_KEY = "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"
+GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
+FREESOUND_API_KEY = "fnqHINIbylLi4oLJcf3SD8ZEtTMS7ViA0xU7ROxB"
 FREESOUND_SEARCH_URL = "https://freesound.org/apiv2/search/text/"
 
+client = Groq(api_key=GROQ_API_KEY)
 
-# Suppress the GenerationMixin warning
-warnings.filterwarnings("ignore", message=".*GenerationMixin.*")
 
-# 1. Fix PyTorch 2.6 weights_only issue
-_original_torch_load = torch.load
 
-def patched_torch_load(*args, **kwargs):
-    if 'weights_only' not in kwargs:
-        kwargs['weights_only'] = False
-    return _original_torch_load(*args, **kwargs)
-
-torch.load = patched_torch_load
-
-# 2. Import required classes for safe globals
-try:
-    from TTS.config.shared_configs import BaseDatasetConfig
-    from TTS.tts.configs.xtts_config import XttsConfig, XttsAudioConfig
-    from TTS.tts.models.xtts import XttsArgs
-    
-    # Add safe globals
-    torch.serialization.add_safe_globals([
-        BaseDatasetConfig,
-        XttsConfig, 
-        XttsAudioConfig,
-        XttsArgs
-    ])
-except ImportError as e:
-    print(f"Warning: Could not import some TTS classes for safe globals: {e}")
-
-# 3. Fix GenerationMixin inheritance issue
-try:
-    from transformers import GenerationMixin
-    from TTS.tts.layers.xtts.gpt import GPT2InferenceModel
-    import TTS.tts.layers.xtts.gpt as gpt_module
-    
-    # Create patched model class
-    class PatchedGPT2InferenceModel(GPT2InferenceModel, GenerationMixin):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-        
-        def generate(self, *args, **kwargs):
-            # Call the parent generate method
-            outputs = super().generate(*args, **kwargs)
-            
-            # Handle different output types
-            if hasattr(outputs, 'sequences'):
-                return outputs.sequences
-            elif hasattr(outputs, 'logits'):
-                # For CausalLMOutputWithCrossAttentions, extract sequences properly
-                return outputs.logits.argmax(-1)
-            else:
-                return outputs
-    
-    # Replace the original class
-    gpt_module.GPT2InferenceModel = PatchedGPT2InferenceModel
-    
-except ImportError as e:
-    print(f"Warning: Could not patch GenerationMixin: {e}")
-
-# 4. Initialize TTS with error handling
-def initialize_tts(model_name="tts_models/multilingual/multi-dataset/xtts_v2", gpu=False):
-    # Try different import methods
-    TTS_class = None
-    
-    # Method 1: Direct import
-    try:
-        from TTS import TTS as TTS_class
-        print("TTS imported directly from TTS package")
-    except ImportError:
-        pass
-    
-    # Method 2: Import from api
-    if TTS_class is None:
-        try:
-            from TTS.api import TTS as TTS_class
-            print("TTS imported from TTS.api")
-        except ImportError:
-            pass
-    
-    # Method 3: Import from utils
-    if TTS_class is None:
-        try:
-            from TTS.utils.synthesizer import Synthesizer
-            print("Warning: Using Synthesizer instead of TTS class")
-            # This is a more complex fallback - you'd need to handle this differently
-        except ImportError:
-            pass
-    
-    if TTS_class is None:
-        raise ImportError("Could not import TTS class from any location")
-    
-    try:
-        return TTS_class(model_name, gpu=gpu)
-    except Exception as e:
-        print(f"Error initializing TTS with {model_name}: {e}")
-        # Fallback to a simpler model
-        try:
-            return TTS_class("tts_models/en/ljspeech/tacotron2-DDC", gpu=gpu)
-        except Exception as e2:
-            print(f"Fallback TTS also failed: {e2}")
-            raise e
-
-# Initialize TTS
-try:
-    tts = initialize_tts()
-    print("TTS initialized successfully!")
-except Exception as e:
-    print(f"Failed to initialize TTS: {e}")
-    print("Please reinstall TTS library: pip uninstall TTS && pip install TTS")
-    tts = None
-
+## ========================================================================================================
 
 # Prompt
 PROMPT = """
@@ -341,3 +239,4 @@ async def clone_my_audio(refAudio: UploadFile = File(...), audioFileInput: Uploa
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+    

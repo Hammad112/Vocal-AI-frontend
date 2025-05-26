@@ -619,18 +619,26 @@
   }
   
   .btn-filled {
-    background: #ffffff;
-    border: none;
+    background-color: #ffcc00;
     color: #000000;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-size: 0.9rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background-color 0.4s ease, transform 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+    opacity: 0;
+    visibility: hidden; /* Prevent initial rendering */
+    transform: scale(0.85) translateY(30px);
+    will-change: transform, opacity, visibility, box-shadow;
   }
   
   .btn-filled:hover {
-    background: #e6e6e6;
-    transform: translateY(-4px) scale(1.05);
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    border-color: #ffcc00;
+    outline: none;
+    transform: scale(1.03);
   }
   
   .btn-filled.recording {
