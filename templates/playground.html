@@ -10,12 +10,10 @@
 
 <body>
   <div class="container">
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-header">
         <h2 class="sidebar-title">🎙️ MELO Voice Cloner</h2>
       </div>
-
       <div class="input-group">
         <label for="language" class="input-label">🌐 Language</label>
         <select id="language" class="select-input">
@@ -38,18 +36,14 @@
           <option value="hi">Hindi</option>
         </select>
       </div>
-
       <div class="input-group">
-        <label for="refAudio" class="input-label" data-tooltip="Upload a sample of the voice you want to clone">
-          🔼 Reference Audio
-        </label>
+        <label for="refAudio" class="input-label" data-tooltip="Upload a sample of the voice you want to clone">🔼
+          Reference Audio</label>
         <input type="file" id="refAudio" accept="audio/*" required class="file-input" />
       </div>
-
       <div class="input-group">
-        <label for="modeSelect" class="input-label" data-tooltip="Choose how you want to use the voice cloning">
-          🧠 Mode
-        </label>
+        <label for="modeSelect" class="input-label" data-tooltip="Choose how you want to use the voice cloning">🧠
+          Mode</label>
         <select id="modeSelect" class="select-input">
           <option value="text">Clone My Text</option>
           <option value="clone-my-audio">Clone My Audio</option>
@@ -58,8 +52,6 @@
         </select>
       </div>
     </aside>
-
-    <!-- Main -->
     <main class="main">
       <div class="card">
         <div class="card-header">
@@ -67,14 +59,12 @@
           <p class="card-subtitle">Transform your voice into a digital masterpiece — Clone it with cutting-edge AI
             models</p>
         </div>
-
         <form id="voiceForm" class="form">
           <div id="textInputContainer">
             <label for="userText" class="input-label">✍️ Enter Text or Question</label>
             <textarea id="userText" class="textarea"
               placeholder="Write something here that you want to hear in your cloned voice..."></textarea>
           </div>
-
           <div id="recordContainer" class="hidden">
             <label class="input-label">🎤 Record Your Question</label>
             <button type="button" id="recordBtn" class="record-btn">
@@ -85,45 +75,43 @@
               <canvas id="visualizer" width="300" height="60"></canvas>
             </div>
           </div>
-
           <div id="spinner" class="spinner hidden"></div>
-
-          <button type="submit" class="submit-btn">
-            🚀 Generate Cloned Voice
-          </button>
+          <button type="submit" class="submit-btn">🚀 Generate Cloned Voice</button>
         </form>
-
-        <!-- Output -->
-        <div id="output" class="output ">
+        <div id="output" class="output hidden">
           <h2 class="output-title">🎧 Generated Voice</h2>
           <audio id="audioPlayer" controls class="audio-player"></audio>
-          <a id="downloadBtn" class="download-btn" download="melo-cloned-voice.wav">⬇️ Download
-            Cloned Audio</a>
+          <a id="downloadBtn" class="download-btn" download="melo-cloned-voice.wav">⬇️ Download Cloned Audio</a>
+          <p id="errorMessage" class="error-message hidden"></p>
         </div>
       </div>
     </main>
   </div>
-
   <script>
+    // Configuration
     const BASE_URL = 'http://localhost:8000';
-    const REQUEST_TIMEOUT = 30000; // 30 seconds timeout
-    const modeSelect = document.getElementById("modeSelect");
-    const textInputContainer = document.getElementById("textInputContainer");
-    const recordContainer = document.getElementById("recordContainer");
-    const recordBtn = document.getElementById("recordBtn");
-    const recordBtnText = document.getElementById("recordBtnText");
-    const recordStatus = document.getElementById("recordStatus");
-    const voiceForm = document.getElementById("voiceForm");
-    const spinner = document.getElementById("spinner");
-    const output = document.getElementById("output");
-    const downloadBtn = document.getElementById("downloadBtn");
-    const audioPlayer = document.getElementById("audioPlayer");
-    const visualizer = document.getElementById("visualizer");
-    const audioVisualizer = document.getElementById("audioVisualizer");
-    const refAudio = document.getElementById("refAudio");
-    const userText = document.getElementById("userText");
-    const languageSelect = document.getElementById("language");
+    const POLL_INTERVAL = 5000; // Poll every 5 seconds
 
+    // DOM Elements
+    const modeSelect = document.getElementById('modeSelect');
+    const textInputContainer = document.getElementById('textInputContainer');
+    const recordContainer = document.getElementById('recordContainer');
+    const recordBtn = document.getElementById('recordBtn');
+    const recordBtnText = document.getElementById('recordBtnText');
+    const recordStatus = document.getElementById('recordStatus');
+    const voiceForm = document.getElementById('voiceForm');
+    const spinner = document.getElementById('spinner');
+    const output = document.getElementById('output');
+    const downloadBtn = document.getElementById('downloadBtn');
+    const audioPlayer = document.getElementById('audioPlayer');
+    const errorMessage = document.getElementById('errorMessage');
+    const visualizer = document.getElementById('visualizer');
+    const audioVisualizer = document.getElementById('audioVisualizer');
+    const refAudio = document.getElementById('refAudio');
+    const userText = document.getElementById('userText');
+    const languageSelect = document.getElementById('language');
+
+    // State Variables
     let recordedBlob = null;
     let mediaRecorder = null;
     let audioContext = null;
@@ -132,221 +120,281 @@
     let animationFrame = null;
     let stream = null;
 
-    // Ensure form submission doesn't cause a page refresh
-    voiceForm.setAttribute("novalidate", "novalidate");
-
-    modeSelect.addEventListener("change", () => {
-      const selected = modeSelect.value;
-      textInputContainer.classList.toggle("hidden", selected === "clone-my-audio" || selected === "llmAudio");
-      recordContainer.classList.toggle("hidden", selected !== "clone-my-audio" && selected !== "llmAudio");
-      output.classList.add("hidden");
-      audioPlayer.src = "";
-      audioPlayer.style.display = "none";
-      downloadBtn.style.display = "none";
-      console.log(`[${new Date().toISOString()}] Mode changed to: ${selected}`);
-    });
-
-    function initAudioVisualizer(stream) {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const source = audioContext.createMediaStreamSource(stream);
-      analyser = audioContext.createAnalyser();
-      analyser.fftSize = 256;
-      source.connect(analyser);
-      const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
-      const ctx = visualizer.getContext("2d");
-
-      function draw() {
-        if (!isRecording) return;
-        animationFrame = requestAnimationFrame(draw);
-        analyser.getByteFrequencyData(dataArray);
-        ctx.clearRect(0, 0, visualizer.width, visualizer.height);
-        ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-        ctx.fillRect(0, 0, visualizer.width, visualizer.height);
-        const barWidth = (visualizer.width / bufferLength) * 2.5;
-        let x = 0;
-        for (let i = 0; i < bufferLength; i++) {
-          const barHeight = dataArray[i] / 2;
-          ctx.fillStyle = `rgb(245, ${197 + i}, ${24 + i})`;
-          ctx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
-          x += barWidth + 1;
+    // Function to send logs to the backend
+    async function sendLogToBackend(message) {
+      try {
+        const response = await fetch(`${BASE_URL}/log-frontend-message`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ message }),
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Failed to send log to backend:`, err);
       }
-      draw();
     }
 
+    // Prevent form refresh
+    voiceForm.setAttribute('novalidate', 'novalidate');
+
+    // Mode selection handler
+    modeSelect.addEventListener('change', async () => {
+      const selected = modeSelect.value;
+      textInputContainer.classList.toggle('hidden', selected === 'clone-my-audio' || selected === 'llmAudio');
+      recordContainer.classList.toggle('hidden', selected !== 'clone-my-audio' && selected !== 'llmAudio');
+      output.classList.add('hidden');
+      audioPlayer.src = '';
+      audioPlayer.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      errorMessage.classList.add('hidden');
+      const timestamp = new Date().toISOString();
+      await sendLogToBackend(`[${timestamp}] Mode changed to: ${selected}`);
+    });
+
+    // Audio visualizer initialization
+    function initAudioVisualizer(stream) {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        const ctx = visualizer.getContext('2d');
+
+        function draw() {
+          if (!isRecording) return;
+          animationFrame = requestAnimationFrame(draw);
+          analyser.getByteFrequencyData(dataArray);
+          ctx.clearRect(0, 0, visualizer.width, visualizer.height);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+          ctx.fillRect(0, 0, visualizer.width, visualizer.height);
+          const barWidth = (visualizer.width / bufferLength) * 2.5;
+          let x = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            const barHeight = dataArray[i] / 2;
+            ctx.fillStyle = `rgb(245, ${197 + i}, ${24 + i})`;
+            ctx.fillRect(x, visualizer.height - barHeight, barWidth, barHeight);
+            x += barWidth + 1;
+          }
+        }
+        draw();
+      } catch (err) {
+        const timestamp = new Date().toISOString();
+        sendLogToBackend(`[${timestamp}] Visualizer error: ${err.message}`);
+        audioVisualizer.classList.add('hidden');
+      }
+    }
+
+    // Recording handler
     async function toggleRecording() {
+      const timestamp = new Date().toISOString();
       if (isRecording) {
         isRecording = false;
-        recordBtnText.textContent = "Start Recording";
-        recordBtn.classList.remove("recording");
-        recordStatus.textContent = "✅ Recording complete.";
+        recordBtnText.textContent = 'Start Recording';
+        recordBtn.classList.remove('recording');
+        recordStatus.textContent = '✅ Recording complete.';
         if (mediaRecorder) mediaRecorder.stop();
         if (stream) stream.getTracks().forEach(track => track.stop());
         if (animationFrame) cancelAnimationFrame(animationFrame);
-        audioVisualizer.classList.add("hidden");
-        console.log(`[${new Date().toISOString()}] Recording stopped`);
+        audioVisualizer.classList.add('hidden');
+        await sendLogToBackend(`[${timestamp}] Recording stopped`);
       } else {
         try {
-          recordStatus.textContent = "🎙️ Recording... speak now.";
-          recordBtnText.textContent = "Stop Recording";
-          recordBtn.classList.add("recording");
+          await sendLogToBackend(`[${timestamp}] Starting recording...`);
+          recordStatus.textContent = '🎙️ Recording... speak now.';
+          recordBtnText.textContent = 'Stop Recording';
+          recordBtn.classList.add('recording');
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const chunks = [];
-          mediaRecorder = new MediaRecorder(stream);
+          mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
           mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
-          mediaRecorder.onstop = () => {
-            recordedBlob = new Blob(chunks, { type: "audio/wav" });
-            console.log(`[${new Date().toISOString()}] Recorded blob size: ${recordedBlob.size}`);
+          mediaRecorder.onstop = async () => {
+            recordedBlob = new Blob(chunks, { type: 'audio/wav' });
+            await sendLogToBackend(`[${timestamp}] Recorded blob size: ${recordedBlob.size} bytes`);
           };
           mediaRecorder.start();
           isRecording = true;
-          audioVisualizer.classList.remove("hidden");
+          audioVisualizer.classList.remove('hidden');
           initAudioVisualizer(stream);
           setTimeout(() => {
             if (isRecording) toggleRecording();
           }, 10000);
-          console.log(`[${new Date().toISOString()}] Recording started`);
+          await sendLogToBackend(`[${timestamp}] Recording started`);
         } catch (err) {
-          recordStatus.textContent = "❌ Error accessing microphone.";
-          console.error("Recording error:", err);
-          showNotification("Microphone access failed.", "error");
+          await sendLogToBackend(`[${timestamp}] Recording error: ${err.message}`);
+          recordStatus.textContent = '❌ Error accessing microphone.';
+          showNotification('Microphone access failed.', 'error');
         }
       }
     }
 
-    voiceForm.addEventListener("submit", async (e) => {
-      e.preventDefault(); // Prevent default form submission
-      console.log(`[${new Date().toISOString()}] Form submission intercepted`);
+    // Poll status until task is completed
+    async function pollStatus(taskId, outputFilename) {
+      const timestamp = new Date().toISOString();
+      try {
+        const response = await fetch(`${BASE_URL}/status/${taskId}`);
+        if (!response.ok) {
+          throw new Error(`Status check failed: ${response.statusText}`);
+        }
+        const statusData = await response.json();
+        await sendLogToBackend(`[${timestamp}] Task ${taskId} status: ${statusData.status}`);
 
+        if (statusData.status === "completed") {
+          // Fetch the audio file
+          const audioResponse = await fetch(`${BASE_URL}/get-audio/${taskId}`);
+          if (!audioResponse.ok) {
+            throw new Error(`Failed to fetch audio: ${audioResponse.statusText}`);
+          }
+          const blob = await audioResponse.blob();
+          await sendLogToBackend(`[${timestamp}] Fetched generated voice for task ${taskId}, blob size: ${blob.size} bytes, type: ${blob.type}`);
+
+          const audioUrl = URL.createObjectURL(blob);
+          audioPlayer.src = audioUrl;
+          audioPlayer.style.display = 'block';
+          downloadBtn.href = audioUrl;
+          downloadBtn.download = outputFilename;
+          downloadBtn.style.display = 'inline-block';
+          output.classList.remove('hidden');
+          await sendLogToBackend(`[${timestamp}] Generated voice loaded successfully into audio player`);
+          audioPlayer.play().catch(async (err) => {
+            await sendLogToBackend(`[${timestamp}] Autoplay blocked: ${err.message}`);
+            showNotification('Tap play to listen to the generated voice.', 'info');
+          });
+          showNotification('Voice cloned successfully!', 'success');
+          return true;
+        } else if (statusData.status === "failed") {
+          throw new Error(statusData.error || 'Voice generation failed');
+        } else {
+          // Continue polling
+          return false;
+        }
+      } catch (error) {
+        await sendLogToBackend(`[${timestamp}] Error polling status for task ${taskId}: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // Form submission handler
+    voiceForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const timestamp = new Date().toISOString();
+      await sendLogToBackend(`[${timestamp}] Initiating request for voice cloning`);
+
+      // Validate inputs
       if (!refAudio.files[0]) {
-        showNotification("Reference audio is required.", "error");
+        await sendLogToBackend(`[${timestamp}] Validation failed: No reference audio file`);
+        showNotification('Reference audio is required.', 'error');
         return;
       }
 
       const formData = new FormData();
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const language = languageSelect.value;
       const mode = modeSelect.value;
-      formData.append("refAudio", refAudio.files[0], `ref_audio_${language}_${timestamp}.wav`);
-      formData.append("language", language);
-      formData.append("outputFilename", `cloned_${mode}_${language}_${timestamp}.wav`);
+      const filename = `ref_audio_${language}_${timestamp.replace(/[:.]/g, '-')}.wav`;
+      formData.append('refAudio', refAudio.files[0], filename);
+      formData.append('language', language);
+      const outputFilename = `cloned_${mode}_${language}_${timestamp.replace(/[:.]/g, '-')}.wav`;
+      formData.append('outputFilename', outputFilename);
 
       let url;
-      if (mode === "text") {
+      if (mode === 'text' || mode === 'llmText') {
         if (!userText.value.trim()) {
-          showNotification("Please enter text.", "error");
+          await sendLogToBackend(`[${timestamp}] Validation failed: No user text`);
+          showNotification('Please enter text.', 'error');
           return;
         }
-        formData.append("userText", userText.value);
-        url = `${BASE_URL}/clone-text/`;
-      } else if (mode === "llmText") {
-        if (!userText.value.trim()) {
-          showNotification("Please enter text.", "error");
-          return;
-        }
-        formData.append("userText", userText.value);
-        url = `${BASE_URL}/clone-llm-text/`;
-      } else if (mode === "clone-my-audio") {
+        formData.append('userText', userText.value);
+        url = mode === 'text' ? `${BASE_URL}/clone-text/` : `${BASE_URL}/clone-llm-text/`;
+        await sendLogToBackend(`[${timestamp}] Received request for /${mode === 'text' ? 'clone-text' : 'clone-llm-text'}/ with userText: ${userText.value.slice(0, 50)}..., language: ${language}`);
+      } else {
         if (!recordedBlob) {
-          showNotification("Please record audio first.", "error");
+          await sendLogToBackend(`[${timestamp}] Validation failed: No recorded audio`);
+          showNotification('Please record audio first.', 'error');
           return;
         }
-        formData.append("audioFileInput", recordedBlob, `input_audio_${language}_${timestamp}.wav`);
-        url = `${BASE_URL}/clone-my-audio/`;
-      } else if (mode === "llmAudio") {
-        if (!recordedBlob) {
-          showNotification("Please record audio first.", "error");
-          return;
-        }
-        formData.append("audioFileInput", recordedBlob, `input_audio_${language}_${timestamp}.wav`);
-        url = `${BASE_URL}/clone-llm-audio/`;
+        formData.append('audioFileInput', recordedBlob, `input_audio_${language}_${timestamp.replace(/[:.]/g, '-')}.wav`);
+        url = mode === 'clone-my-audio' ? `${BASE_URL}/clone-my-audio/` : `${BASE_URL}/clone-llm-audio/`;
+        await sendLogToBackend(`[${timestamp}] Received request for /${mode === 'clone-my-audio' ? 'clone-my-audio' : 'clone-llm-audio'}/ with language: ${language}`);
       }
 
-      spinner.classList.remove("hidden");
-      output.classList.add("hidden");
-      audioPlayer.src = "";
-      audioPlayer.style.display = "none";
-      downloadBtn.style.display = "none";
-      console.log(`[${new Date().toISOString()}] Spinner shown, output hidden`);
+      // Show spinner and disable form
+      await sendLogToBackend(`[${timestamp}] Showing spinner and disabling form`);
+      spinner.classList.remove('hidden');
+      voiceForm.querySelector('button[type="submit"]').disabled = true;
+      output.classList.add('hidden');
+      audioPlayer.src = '';
+      audioPlayer.style.display = 'none';
+      downloadBtn.style.display = 'none';
+      errorMessage.classList.add('hidden');
+      await sendLogToBackend(`[${timestamp}] Sending request to: ${url}`);
+      for (let [key, value] of formData.entries()) {
+        await sendLogToBackend(`[${timestamp}] FormData [${key}]: ${value instanceof File ? value.name : value}`);
+      }
 
       try {
-        console.log(`[${new Date().toISOString()}] Sending request to: ${url}`);
-        for (let [key, value] of formData.entries()) {
-          console.log(`[${key}]:`, value instanceof File ? value.name : value);
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-        const res = await fetch(url, {
-          method: "POST",
+        // Start the task
+        const response = await fetch(url, {
+          method: 'POST',
           body: formData,
-          signal: controller.signal
         });
-
-        clearTimeout(timeoutId);
-        console.log(`[${new Date().toISOString()}] Response status: ${res.status} ${res.statusText}`);
-
-        if (!res.ok) {
-          const errorText = await res.text();
-          console.error("Backend error:", errorText);
-          throw new Error(`Voice generation failed: ${res.status} ${res.statusText} - ${errorText}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          await sendLogToBackend(`[${timestamp}] Backend error: ${errorText}`);
+          throw new Error(`Failed to start task: ${errorText}`);
         }
+        const taskData = await response.json();
+        const taskId = taskData.task_id;
+        await sendLogToBackend(`[${timestamp}] Task started with ID: ${taskId}`);
 
-        const blob = await res.blob();
-        if (!blob || blob.size === 0) {
-          console.error("Empty or invalid audio blob received.");
-          throw new Error("Received empty or invalid audio file.");
+        // Poll for status
+        let isCompleted = false;
+        while (!isCompleted) {
+          isCompleted = await pollStatus(taskId, outputFilename);
+          if (!isCompleted) {
+            await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL));
+          }
         }
-
-        console.log(`[${new Date().toISOString()}] Audio blob received, size: ${blob.size}, type: ${blob.type}`);
-        const audioUrl = URL.createObjectURL(blob);
-        audioPlayer.src = audioUrl;
-        audioPlayer.style.display = "block";
-        try {
-          await audioPlayer.play();
-        } catch (err) {
-          console.warn("Autoplay blocked:", err);
-          showNotification("Tap play to listen to the generated voice.", "info");
-        }
-        downloadBtn.href = audioUrl;
-        downloadBtn.download = formData.get("outputFilename");
-        downloadBtn.style.display = "inline-block";
-        output.classList.remove("hidden");
-        console.log(`[${new Date().toISOString()}] Audio player and download button shown`);
-        showNotification("Voice cloned successfully!", "success");
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Voice generation failed:`, error);
-        if (error.name === 'AbortError') {
-          showNotification("Request timed out. Please try again.", "error");
-        } else {
-          showNotification(`Failed to generate voice: ${error.message}`, "error");
-        }
+        await sendLogToBackend(`[${timestamp}] Error: ${error.message}`);
+        output.classList.remove('hidden');
+        errorMessage.textContent = `Failed: ${error.message}`;
+        errorMessage.classList.remove('hidden');
+        showNotification(error.message, 'error');
       } finally {
-        spinner.classList.add("hidden");
-        console.log(`[${new Date().toISOString()}] Spinner hidden`);
+        await sendLogToBackend(`[${timestamp}] Hiding spinner and re-enabling form`);
+        spinner.classList.add('hidden');
+        voiceForm.querySelector('button[type="submit"]').disabled = false;
       }
     });
 
-    recordBtn.addEventListener("click", toggleRecording);
+    // Record button handler
+    recordBtn.addEventListener('click', toggleRecording);
 
-    function showNotification(message, type = "info") {
-      const notification = document.createElement("div");
+    // Notification helper
+    async function showNotification(message, type = 'info') {
+      const timestamp = new Date().toISOString();
+      const notification = document.createElement('div');
       notification.textContent = message;
       notification.className = `notification ${type}`;
-      const icon = document.createElement("span");
-      icon.textContent = type === "error" ? "❌" : type === "success" ? "✅" : "ℹ️";
+      const icon = document.createElement('span');
+      icon.textContent = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
       notification.prepend(icon);
       document.body.appendChild(notification);
+      notification.style.opacity = '1';
+      notification.style.transition = 'all 0.3s ease';
       setTimeout(() => {
-        notification.style.opacity = "0";
-        notification.style.transform = "translateY(10px)";
-        notification.style.transition = "all 0.3s ease";
+        notification.style.opacity = '0';
         setTimeout(() => notification.remove(), 300);
       }, 4000);
+      await sendLogToBackend(`[${timestamp}] Notification: ${message} (${type})`);
     }
   </script>
 </body>
