@@ -52,7 +52,7 @@ app.add_middleware(
 MODEL_NAME = "llama-3.3-70b-versatile"
 WHISPER_MODEL = "whisper-large-v3-turbo"
 WHISPER_ENDPOINT = "https://api.groq.com/openai/v1/audio/transcriptions"
-GROQ_API_KEY = "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"
+GROQ_API_KEY = ""
 
 # Suppress the GenerationMixin warning
 warnings.filterwarnings("ignore", message=".*GenerationMixin.*")
